@@ -2,7 +2,7 @@
   "name": "changelogen",
   "version": "0.5.3",
   "description": "Generate Beautiful Changelogs using Conventional Commits",
-  "repository": "unjs/changelogen",
+  "repository": "TEUTLOFF/changelogen",
   "license": "MIT",
   "sideEffects": false,
   "type": "module",

@@ -1,9 +1,9 @@
-import { upperFirst } from "scule";
-import { convert } from "convert-gitmoji";
-import { fetch } from "node-fetch-native";
-import type { ChangelogConfig } from "./config";
-import type { GitCommit, Reference } from "./git";
-import { formatReference, formatCompareChanges } from "./repo";
+import {upperFirst} from "scule";
+import {convert} from "convert-gitmoji";
+import {fetch} from "node-fetch-native";
+import type {ChangelogConfig} from "./config";
+import type {GitCommit, Reference} from "./git";
+import {formatReference, formatCompareChanges} from "./repo";
 
 export async function generateMarkDown(
   commits: GitCommit[],
@@ -42,57 +42,59 @@ export async function generateMarkDown(
     markdown.push("", "#### ⚠️  Breaking Changes", "", ...breakingChanges);
   }
 
-  const _authors = new Map<string, { email: Set<string>; github?: string }>();
-  for (const commit of commits) {
-    if (!commit.author) {
-      continue;
-    }
-    const name = formatName(commit.author.name);
-    if (!name || name.includes("[bot]")) {
-      continue;
-    }
-    if (!_authors.has(name)) {
-      _authors.set(name, { email: new Set([commit.author.email]) });
-    } else {
-      const entry = _authors.get(name);
-      entry.email.add(commit.author.email);
-    }
-  }
-
-  // Try to map authors to github usernames
-  await Promise.all(
-    [..._authors.keys()].map(async (authorName) => {
-      const meta = _authors.get(authorName);
-      for (const email of meta.email) {
-        const { user } = await fetch(`https://ungh.cc/users/find/${email}`)
-          .then((r) => r.json())
-          .catch(() => ({ user: null }));
-        if (user) {
-          meta.github = user.username;
-          break;
-        }
+  if (config.contributors) {
+    const _authors = new Map<string, { email: Set<string>; github?: string }>();
+    for (const commit of commits) {
+      if (!commit.author) {
+        continue;
       }
-    })
-  );
+      const name = formatName(commit.author.name);
+      if (!name || name.includes("[bot]")) {
+        continue;
+      }
+      if (!_authors.has(name)) {
+        _authors.set(name, {email: new Set([commit.author.email])});
+      } else {
+        const entry = _authors.get(name);
+        entry.email.add(commit.author.email);
+      }
+    }
 
-  const authors = [..._authors.entries()].map((e) => ({ name: e[0], ...e[1] }));
-
-  if (authors.length > 0) {
-    markdown.push(
-      "",
-      "### " + "❤️  Contributors",
-      "",
-      ...authors.map((i) => {
-        const _email = [...i.email].find(
-          (e) => !e.includes("noreply.github.com")
-        );
-        const email = _email ? `<${_email}>` : "";
-        const github = i.github
-          ? `([@${i.github}](http://github.com/${i.github}))`
-          : "";
-        return `- ${i.name} ${github || email}`;
+    // Try to map authors to github usernames
+    await Promise.all(
+      [..._authors.keys()].map(async (authorName) => {
+        const meta = _authors.get(authorName);
+        for (const email of meta.email) {
+          const {user} = await fetch(`https://ungh.cc/users/find/${email}`)
+            .then((r) => r.json())
+            .catch(() => ({user: null}));
+          if (user) {
+            meta.github = user.username;
+            break;
+          }
+        }
       })
     );
+
+    const authors = [..._authors.entries()].map((e) => ({name: e[0], ...e[1]}));
+
+    if (authors.length > 0) {
+      markdown.push(
+        "",
+        "### " + "❤️  Contributors",
+        "",
+        ...authors.map((i) => {
+          const _email = [...i.email].find(
+            (e) => !e.includes("noreply.github.com")
+          );
+          const email = _email ? `<${_email}>` : "";
+          const github = i.github
+            ? `([@${i.github}](http://github.com/${i.github}))`
+            : "";
+          return `- ${i.name} ${github || email}`;
+        })
+      );
+    }
   }
 
   return convert(markdown.join("\n").trim(), true);
@@ -132,7 +134,7 @@ function formatCommit(commit: GitCommit, config: ChangelogConfig) {
     (commit.scope ? `**${commit.scope.trim()}:** ` : "") +
     (commit.isBreaking ? "⚠️  " : "") +
     upperFirst(commit.description) +
-    formatReferences(commit.references, config)
+    (config.includeReferences ? formatReferences(commit.references, config) : "")
   );
 }
 
